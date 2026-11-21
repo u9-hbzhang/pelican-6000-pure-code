@@ -1,88 +1,62 @@
-// src/rig/pelican.js
-// Parametric skeletal rig (Pelican + Bicycle) with exact analytical two-bone leg IK.
-// Guarantees continuous pose & motion across every picture-frame style boundary.
+// Shared cycling choreography. All era painters consume the same joint contract.
+// Pose is a pure function of the supplied phase/time so seeking never needs a simulation warm-up.
+const TAU = Math.PI * 2;
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-/**
- * Solves 2D two-bone analytical IK from `root` to `target` with limb lengths `L1`, `L2`.
- * `bendSign` (+1 or -1) picks the knee bend side deterministically without frame popping.
- */
+/** Solve a two-link limb by intersecting circles; retain a stable bend direction. */
 export function solveTwoBoneIK(rx, ry, tx, ty, L1, L2, bendSign = 1) {
-  let dx = tx - rx;
-  let dy = ty - ry;
-  let d = Math.hypot(dx, dy);
-  const minD = Math.abs(L1 - L2) + 1e-3;
-  const maxD = L1 + L2 - 1e-3;
-  if (d < minD) d = minD;
-  if (d > maxD) {
-    const k = maxD / d;
-    dx *= k;
-    dy *= k;
-    d = maxD;
-  }
-  const cosA = (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d);
-  const clampedCos = Math.max(-1, Math.min(1, cosA));
-  const angleBase = Math.atan2(dy, dx);
-  const angleOffset = bendSign * Math.acos(clampedCos);
-  const kneeAngle = angleBase + angleOffset;
-  return {
-    x: rx + L1 * Math.cos(kneeAngle),
-    y: ry + L1 * Math.sin(kneeAngle),
-    hipAngle: kneeAngle,
-  };
+  const dx = tx - rx;
+  const dy = ty - ry;
+  const distance = Math.hypot(dx, dy);
+  const ux = distance > 1e-9 ? dx / distance : 1;
+  const uy = distance > 1e-9 ? dy / distance : 0;
+  const reach = Math.max(Math.abs(L1 - L2) + 1e-6, Math.min(L1 + L2 - 1e-6, distance));
+  const along = (L1 * L1 - L2 * L2 + reach * reach) / (2 * reach);
+  const across = Math.sqrt(Math.max(0, L1 * L1 - along * along)) * (bendSign < 0 ? -1 : 1);
+  const x = rx + ux * along - uy * across;
+  const y = ry + uy * along + ux * across;
+  return { x, y, hipAngle: Math.atan2(y - ry, x - rx) };
+}
+
+function rotatePoint(px, py, origin, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return { x: origin.x + px * c - py * s, y: origin.y + px * s + py * c };
 }
 
 /**
- * Computes full deterministic joint & spline rig for Pelican + Bicycle at `(x, groundY)`.
- *
- * @param {object} opts
- * @param {number} opts.x - Center X in panel coordinates (0..1000)
- * @param {number} opts.y - Ground contact Y in panel coordinates (canonical edge = 680)
- * @param {number} opts.pedalAngle - Crank angle in radians (2 beats = 2π = 1 full turn)
- * @param {number} [opts.wheelAngle] - Wheel spoke rotation in radians
- * @param {number} [opts.scale=1] - Uniform size scale (e.g. 0.16 in Song Landscape, 1.0 standard)
- * @param {number} [opts.slope=0] - Road tangent angle in radians
- * @param {number} [opts.speedScale=1] - Motion intensity scalar (dampens bobbing during freeze pose)
- * @param {string} [opts.poseMode='normal'] - 'normal' | 'egypt_freeze' | 'bada_eye' | 'jump' | 'lissajous'
- * @param {number} [opts.lissajousMix=0] - [0..1] harmonic distortion amount for #15 Oscilloscope gag
- * @param {number} [opts.time=0] - Global/quantized time for secondary feather/ribbon flutter
+ * A full crank cycle alternates a low, forward power pose with a tall recovery pose.
+ * The long neck leads the gesture; torso, pouch and feathers follow at different phases.
+ * Keep the seated hip within leg reach while making the upper-body silhouette expressive.
+ * Keep wheel geometry,
+ * the scene-supplied crank phase, road position and all legacy joint names intact.
  */
 export function computePelicanRig({
-  x = 500,
-  y = 680,
-  pedalAngle = 0,
-  wheelAngle = null,
-  scale = 1.0,
-  slope = 0,
-  speedScale = 1.0,
-  poseMode = 'normal',
-  lissajousMix = 0,
-  time = 0,
+  x = 500, y = 680, pedalAngle = 0, wheelAngle = null,
+  scale = 1, slope = 0, speedScale = 1, poseMode = 'normal',
+  lissajousMix = 0, time = 0,
 } = {}) {
-  const wheelR = 46;
-  const wAngle = wheelAngle !== null ? wheelAngle : (x / wheelR);
+  const phase = ((pedalAngle % TAU) + TAU) % TAU;
+  const effort = Math.max(0, Math.min(1.2, speedScale));
+  // No secondary motion at rest. Scene-authored freezes/jumps keep their own trajectory.
+  const freeze = poseMode === 'egypt_freeze';
+  const motion = freeze ? 0 : effort;
+  const p = freeze ? 0 : phase;
+  const doubleStroke = Math.cos(2 * p - 0.35);
+  const transfer = Math.sin(p - 0.4);
+  const drive = Math.sin(p - 0.25);
+  const follow = Math.sin(p - 0.85);
+  const lift = motion * (4 * doubleStroke + Math.sin(4 * p));
+  const surge = motion * (4 * transfer + 1.5 * Math.sin(2 * p));
+  const torsoPitch = motion * (0.18 * drive + 0.045 * Math.sin(2 * p - 0.6));
+  const wAngle = wheelAngle ?? x / 46;
 
-  // Subtle 1-per-beat saddle bounce & gular throat-pouch jiggle
-  const motionAmp = Math.min(1.2, Math.max(0.08, speedScale));
-  const bob = -3.4 * Math.sin(2 * pedalAngle) * motionAmp;
-  const pouchJiggle = 4.2 * Math.sin(2 * pedalAngle - 0.85) * motionAmp;
-  const nod = 0.038 * Math.sin(2 * pedalAngle - 0.4) * motionAmp;
-
-  // Local unscaled coordinates around ground origin (0, 0), facing +X:
-  const rearWheel = { x: -86, y: -wheelR, r: wheelR, angle: wAngle };
-  const frontWheel = { x: 86, y: -wheelR, r: wheelR, angle: wAngle };
-  const bb = { x: -8, y: -wheelR }; // Bottom bracket
-  const crankR = 21;
-
-  const rightPedal = {
-    x: bb.x + crankR * Math.cos(pedalAngle),
-    y: bb.y + crankR * Math.sin(pedalAngle),
-  };
-  const leftPedal = {
-    x: bb.x - crankR * Math.cos(pedalAngle),
-    y: bb.y - crankR * Math.sin(pedalAngle),
-  };
-
-  // Classic diamond frame + swept cruiser handlebar
+  // A rigid bicycle: wheel contact and the 172-unit wheelbase do not bounce with the rider.
+  const rearWheel = { x: -86, y: -46, r: 46, angle: wAngle };
+  const frontWheel = { x: 86, y: -46, r: 46, angle: wAngle };
+  const bb = { x: -8, y: -46 };
+  const pedal = (a) => ({ x: bb.x + 21 * Math.cos(a), y: bb.y + 21 * Math.sin(a) });
+  const rightPedal = pedal(phase);
+  const leftPedal = pedal(phase + Math.PI);
   const seatCluster = { x: -33, y: -108 };
   const saddle = { x: -37, y: -115 };
   const headTop = { x: 56, y: -112 };
@@ -90,130 +64,76 @@ export function computePelicanRig({
   const stemTop = { x: 52, y: -129 };
   const handleGrip = { x: 37, y: -132 };
 
-  // Pelican body & posture adjustments
-  const isEgypt = poseMode === 'egypt_freeze';
-  const hip = { x: -35, y: -126 + bob };
-  const bodyCenter = { x: -16, y: -136 + bob, rx: 46, ry: 27, tilt: -0.16 };
-  const tailTip = { x: -84, y: -132 + bob * 0.7 };
-  const chest = { x: 14, y: -150 + bob };
-
-  // S-curved neck control points -> head -> iconic long beak + throat pouch
-  const neckC1 = { x: 30, y: -164 + bob };
-  const neckC2 = { x: 8, y: -188 + bob * 1.05 };
+  // Rock the torso from the saddle, folding forward on the power stroke and opening on recovery.
+  const hip = { x: -35 + surge, y: -126 + lift };
+  const bodyPoint = (px, py) => rotatePoint(px, py, hip, torsoPitch);
+  const bodyCenter = { ...bodyPoint(19, -10), rx: 46, ry: 27, tilt: -0.16 + torsoPitch };
+  const chest = bodyPoint(51, -26);
+  const tailTip = bodyPoint(-59 - 5 * motion * follow,
+    -10 + 16 * motion * Math.sin(p - 1.1));
   const head = {
-    x: isEgypt ? 22 : 20,
-    y: -206 + bob * 1.1,
+    x: (freeze ? 22 : 43) + motion * (24 * drive + 3 * Math.sin(2 * p)),
+    y: -207 + motion * (18 * drive + 3 * Math.sin(2 * p - 0.7)),
     r: 15.5,
-    angle: isEgypt ? 0 : nod,
+    angle: motion * (0.16 * Math.sin(p - 0.55) + 0.035 * Math.sin(2 * p - 0.95)),
   };
+  const neckC1 = { x: chest.x + 29 + motion * 10 * drive, y: chest.y - 23 };
+  const neckC2 = { x: head.x - 32 - motion * 11 * follow, y: head.y + 20 };
+  // Rotate the whole bill as a unit; elastic throat motion lags the power stroke.
+  const headPoint = (px, py) => rotatePoint(px, py, head, head.angle);
+  const beakUpperBase = headPoint(9, -6);
+  const beakLowerBase = headPoint(4, 8);
+  const beakTip = headPoint(76, 7);
+  const pouchBelly = headPoint(38 + motion * 7 * Math.sin(p - 1.25),
+    39 + motion * (9 * Math.sin(p - 1.25) + 2 * Math.sin(2 * p - 0.7)));
+  const crest1 = headPoint(-20 - motion * 6 * Math.sin(p - 1.6),
+    -15 + motion * 8 * Math.sin(p - 1.6));
+  const crest2 = headPoint(-28 - motion * 7 * Math.sin(p - 1.9),
+    -7 + motion * 11 * Math.sin(p - 1.9));
 
-  // Beak & elastic gular pouch (in local rig space)
-  const beakUpperBase = { x: head.x + 9, y: head.y - 6 };
-  const beakLowerBase = { x: head.x + 4, y: head.y + 8 };
-  const beakTip = {
-    x: head.x + 76,
-    y: head.y + 7 + Math.sin(head.angle) * 28,
-  };
-  const pouchBelly = {
-    x: head.x + 38,
-    y: head.y + 39 + pouchJiggle,
-  };
-
-  // Crown feather tuft
-  const crest1 = { x: head.x - 15, y: head.y - 11 - 2 * Math.sin(time * 8) };
-  const crest2 = { x: head.x - 20, y: head.y - 4 - 2 * Math.cos(time * 8) };
-
-  // Wing & handlebar reach
-  const wingShoulder = { x: -10, y: -149 + bob };
-  const wingElbow = { x: 12, y: -134 + bob * 0.6 };
+  // The wrist stays on the bar while the elbow folds with the moving shoulder.
+  const wingShoulder = bodyPoint(25, -23);
   const wingTip = { x: handleGrip.x, y: handleGrip.y + 2 };
+  const wingElbow = solveTwoBoneIK(wingShoulder.x, wingShoulder.y, wingTip.x, wingTip.y, 34, 32, 1);
+  const leftHip = { x: hip.x + 3, y: hip.y + 6 };
+  const rightHip = { x: hip.x - 2, y: hip.y + 6 };
+  const leftFoot = { x: leftPedal.x, y: leftPedal.y - 5 };
+  const rightFoot = { x: rightPedal.x, y: rightPedal.y - 5 };
+  const knee = (h, f) => solveTwoBoneIK(h.x, h.y, f.x, f.y, 52, 54, -1);
+  const leftKnee = knee(leftHip, leftFoot);
+  const rightKnee = knee(rightHip, rightFoot);
 
-  // Analytical two-bone leg IK to left & right pedals (bendSign = -1 bends bird ankle/knee forward +X)
-  const footPadOffsetY = -5;
-  const leftKnee = solveTwoBoneIK(
-    hip.x + 3,
-    hip.y + 6,
-    leftPedal.x,
-    leftPedal.y + footPadOffsetY,
-    52,
-    54,
-    -1
-  );
-  const rightKnee = solveTwoBoneIK(
-    hip.x - 2,
-    hip.y + 6,
-    rightPedal.x,
-    rightPedal.y + footPadOffsetY,
-    52,
-    54,
-    -1
-  );
-
-  const cosS = Math.cos(slope) * scale;
-  const sinS = Math.sin(slope) * scale;
-  const xf = (pt) => {
-    let px = pt.x;
-    let py = pt.y;
-    if (lissajousMix > 0.001) {
+  const mix = clamp01(lissajousMix);
+  const c = Math.cos(slope) * scale, s = Math.sin(slope) * scale;
+  const xf = (point) => {
+    let px = point.x, py = point.y;
+    if (mix > 0) {
       const ph = time * 14 + px * 0.045 + py * 0.035;
-      const lx = 115 * Math.sin(3 * time * 5.0 + px * 0.03);
-      const ly = 115 * Math.sin(4 * time * 5.0 + py * 0.03 + 0.9) - 115;
-      px = px * (1 - lissajousMix) + lx * lissajousMix + Math.sin(ph) * 6 * lissajousMix;
-      py = py * (1 - lissajousMix) + ly * lissajousMix;
+      const lx = 115 * Math.sin(15 * time + px * 0.03);
+      const ly = 115 * Math.sin(20 * time + py * 0.03 + 0.9) - 115;
+      px = px * (1 - mix) + (lx + 6 * Math.sin(ph)) * mix;
+      py = py * (1 - mix) + ly * mix;
     }
-    return {
-      ...pt,
-      x: x + px * cosS - py * sinS,
-      y: y + px * sinS + py * cosS,
-    };
+    return { ...point, x: x + px * c - py * s, y: y + px * s + py * c };
   };
-
   return {
-    root: { x, y, scale, slope },
-    poseMode,
-    pedalAngle,
-    wheelAngle: wAngle,
-    time,
-    rearWheel: { ...xf(rearWheel), r: wheelR * scale },
-    frontWheel: { ...xf(frontWheel), r: wheelR * scale },
-    bb: xf(bb),
-    leftPedal: xf(leftPedal),
-    rightPedal: xf(rightPedal),
-    seatCluster: xf(seatCluster),
-    saddle: xf(saddle),
-    headTop: xf(headTop),
-    headBot: xf(headBot),
-    stemTop: xf(stemTop),
-    handleGrip: xf(handleGrip),
-    hip: xf(hip),
-    bodyCenter: {
-      ...xf(bodyCenter),
-      rx: bodyCenter.rx * scale,
-      ry: bodyCenter.ry * scale,
-      tilt: bodyCenter.tilt + slope,
-    },
-    tailTip: xf(tailTip),
-    chest: xf(chest),
-    neckC1: xf(neckC1),
-    neckC2: xf(neckC2),
+    root: { x, y, scale, slope }, poseMode, pedalAngle, wheelAngle: wAngle, time,
+    rearWheel: { ...xf(rearWheel), r: 46 * scale },
+    frontWheel: { ...xf(frontWheel), r: 46 * scale },
+    bb: xf(bb), leftPedal: xf(leftPedal), rightPedal: xf(rightPedal),
+    seatCluster: xf(seatCluster), saddle: xf(saddle),
+    headTop: xf(headTop), headBot: xf(headBot), stemTop: xf(stemTop), handleGrip: xf(handleGrip),
+    hip: xf(hip), bodyCenter: { ...xf(bodyCenter), rx: 46 * scale, ry: 27 * scale, tilt: bodyCenter.tilt + slope },
+    tailTip: xf(tailTip), chest: xf(chest), neckC1: xf(neckC1), neckC2: xf(neckC2),
     head: { ...xf(head), r: head.r * scale, angle: head.angle + slope },
-    beakUpperBase: xf(beakUpperBase),
-    beakLowerBase: xf(beakLowerBase),
-    beakTip: xf(beakTip),
-    pouchBelly: xf(pouchBelly),
-    crest1: xf(crest1),
-    crest2: xf(crest2),
-    wingShoulder: xf(wingShoulder),
-    wingElbow: xf(wingElbow),
-    wingTip: xf(wingTip),
-    leftHip: xf({ x: hip.x + 3, y: hip.y + 6 }),
-    rightHip: xf({ x: hip.x - 2, y: hip.y + 6 }),
-    leftKnee: xf(leftKnee),
-    rightKnee: xf(rightKnee),
-    leftFoot: xf({ x: leftPedal.x, y: leftPedal.y + footPadOffsetY }),
-    rightFoot: xf({ x: rightPedal.x, y: rightPedal.y + footPadOffsetY }),
+    beakUpperBase: xf(beakUpperBase), beakLowerBase: xf(beakLowerBase), beakTip: xf(beakTip),
+    pouchBelly: xf(pouchBelly), crest1: xf(crest1), crest2: xf(crest2),
+    wingShoulder: xf(wingShoulder), wingElbow: xf(wingElbow), wingTip: xf(wingTip),
+    leftHip: xf(leftHip), rightHip: xf(rightHip), leftKnee: xf(leftKnee), rightKnee: xf(rightKnee),
+    leftFoot: xf(leftFoot), rightFoot: xf(rightFoot),
   };
 }
+
 
 /**
  * Draws a crisp, expressive Pelican + Bicycle on a 2D `CanvasRenderingContext2D` or `p5.Graphics` (2D).

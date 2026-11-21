@@ -1,5 +1,13 @@
 # 鹈鹕六千年的车 · Pure-Code Edition
 
+## 本 fork：骑行动作重写 v2
+
+观看新版：**https://u9-hbzhang.github.io/pelican-6000-pure-code/**
+
+本版重写了鹈鹕骑行动作，加入明显的前倾发力、抬头舒展及尾羽跟随；保留原作场景、音乐、字幕和时间线。点击画面开始播放。GitHub Pages 从 `main` 分支根目录发布。
+
+以下保留原作介绍与致谢。
+
 零音频采样（0 MP3/WAV）、零外部位图（0 PNG/JPG）、零外置字体包（0 WOFF2/TTF）——由 **Hydrogen** 独立交付的一整部 **2 分 55 秒（174.64s）** 纯代码中文交互式视听长卷：涵盖铁匠铺矢量篆刻开场、穿越 20 个艺术史时代、Live Canvas/SVG 动态笔触渲染与浏览器 `AudioWorklet` 实时中文歌声/多轨器乐合成。
 
 - **在线直开（GitHub Pages）**：https://wwh5441.github.io/pelican-6000-pure-code/
