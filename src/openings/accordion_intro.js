@@ -12,6 +12,7 @@
 
 import { lerp, smootherstep } from '../fusion/github_core/beat/timeline.js';
 import { VIEW_W, VIEW_H } from '../fusion/github_core/beat/camera.js';
+import { TITLE_PANEL_W } from '../core/film-format.js';
 import {
   computeSlantedForgePolygons,
   renderGoldPrintmakingForgeStage,
@@ -167,7 +168,7 @@ export function renderAccordionIntroOverlay(
   }
 
   const ctx = overlay2D.drawingContext;
-  const basePanelW = accordionDoc?.leftPanelWidth ?? 344;
+  const basePanelW = TITLE_PANEL_W;
   const guitarDropT = accordionDoc?.guitarDropRealT ?? 3.668;
 
   const handoffU = smootherstep(handoffStart, handoffEnd - 0.04, realT);

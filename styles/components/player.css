@@ -14,10 +14,10 @@
 }
 .screen-wrap {
   position: relative;
-  width: min(var(--cinema-width), calc(var(--cinema-height) * 4 / 3));
-  height: min(var(--cinema-height), calc(var(--cinema-width) * 3 / 4));
+  width: min(var(--cinema-width), calc(var(--cinema-height) * 16 / 9));
+  height: min(var(--cinema-height), calc(var(--cinema-width) * 9 / 16));
   flex: none;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   background: #120f0c;
   overflow: hidden;
 }

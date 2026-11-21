@@ -5,6 +5,7 @@
 
 import { SVG_NS } from './gold_svg/defs.js';
 import { createGoldPrintmakingForgeSvg } from './gold_svg/scene.js';
+import { VIEW_W, VIEW_H, TITLE_PANEL_W, FORGE_STAGE_W } from '../core/film-format.js';
 
 export class LiveForgeSvgStage {
   constructor() {
@@ -22,9 +23,9 @@ export class LiveForgeSvgStage {
     host.className = 'live-forge-svg-stage';
     host.style.cssText = [
       'position:absolute',
-      `left:${((344 / 960) * 100).toFixed(4)}%`,
+      `left:${((TITLE_PANEL_W / VIEW_W) * 100).toFixed(4)}%`,
       'top:0',
-      `width:${((616 / 960) * 100).toFixed(4)}%`,
+      `width:${((FORGE_STAGE_W / VIEW_W) * 100).toFixed(4)}%`,
       'height:100%',
       'pointer-events:none',
       'overflow:hidden',
@@ -40,7 +41,7 @@ export class LiveForgeSvgStage {
 
     this.host = host;
     this.svgEl = svgEl;
-    this.scene = createGoldPrintmakingForgeSvg(svgEl, 616, 720);
+    this.scene = createGoldPrintmakingForgeSvg(svgEl, FORGE_STAGE_W, VIEW_H, TITLE_PANEL_W);
     this.ready = true;
   }
 

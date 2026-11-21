@@ -236,7 +236,7 @@ export function renderEraAccordionStage(
   // while Drawer #01 dissolves open onto the real continuous Sahara cave wall underneath (zero double Pelican!).
   const enterEase = 1 - Math.pow(1 - clamp01(enterU), 2.5);
   const rideOffsetX = (1 - enterEase) * stageW * 0.38;
-  const targetX = handoffTarget?.x ?? 480;
+  const targetX = handoffTarget?.x ?? stageX0 + stageW / 2;
   const targetY = handoffTarget?.y ?? 458.6;
   const targetScale = handoffTarget?.scale ?? 0.632;
   const targetPedal = handoffTarget?.pedalAngle ?? realT * 4.6;

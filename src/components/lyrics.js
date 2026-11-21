@@ -3,6 +3,7 @@
 
 import { clamp, smooth } from '../core/math.js';
 import { renderSpatialLyricShot } from './kinetic_lyrics/layouts.js';
+import { LYRIC_OFFSET_X } from '../core/film-format.js';
 
 function buildHeroMask(text, heroList) {
   const chars = [...text];
@@ -108,6 +109,8 @@ export class LyricPainter {
     const totalSpan = Math.max(0.2, phrase.end - phrase.start);
     const progress = clamp((t - phrase.start) / totalSpan, 0, 1.25);
 
+    ctx.save();
+    ctx.translate(LYRIC_OFFSET_X, 0);
     renderSpatialLyricShot(ctx, {
       t,
       line: phrase,
@@ -120,7 +123,8 @@ export class LyricPainter {
       progress,
       beat,
       anvil,
-      pelPos,
+      pelPos: pelPos ? { ...pelPos, x: pelPos.x - LYRIC_OFFSET_X } : null,
     });
+    ctx.restore();
   }
 }

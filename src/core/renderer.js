@@ -1,5 +1,5 @@
 // src/core/renderer.js
-// Unified Fused 2880x2160 (4K UHD 2160P 4:3) Film Renderer for 《鹈鹕骑行·六千年》:
+// Native 16:9 Film Renderer for 《鹈鹕骑行·六千年》.
 // - Fuses the 20-era p5.js + p5.brush WebGL multi-bristle museum scroll, 3D mitred period frames,
 //   cross-frame material handoff micro-physics, Accordion Multi-Redraw Intro, and 7x3 + Empty-Seat Outro
 // - Mounts 4K Infinite-Vector `<svg>` Blacksmith Stage (`LiveForgeSvgStage`) pixel-locked to `(645.84, 370.80)`
@@ -51,7 +51,7 @@ const _urlScale =
     ? Number(new URLSearchParams(window.location.search).get('scale'))
     : 0;
 export const RENDER_SCALE = _urlScale === 3 ? 3 : 2;
-export const FILM_W = VIEW_W * RENDER_SCALE; // 2880 (?scale=3) or 1920 (default)
+export const FILM_W = VIEW_W * RENDER_SCALE; // 3840 (?scale=3) or 2560 (default)
 export const FILM_H = VIEW_H * RENDER_SCALE; // 2160 (?scale=3) or 1440 (default)
 
 function getPostCodeExtension(kit) {
@@ -300,7 +300,7 @@ export class FilmRenderer {
     if (!host) {
       host = document.createElement('div');
       host.id = 'p5-webgl-stage';
-      host.style.cssText = 'position:fixed;left:-9999px;top:0;width:960px;height:720px;pointer-events:none;opacity:0;overflow:hidden;';
+      host.style.cssText = `position:fixed;left:-9999px;top:0;width:${VIEW_W}px;height:${VIEW_H}px;pointer-events:none;opacity:0;overflow:hidden;`;
       document.body.appendChild(host);
     }
 

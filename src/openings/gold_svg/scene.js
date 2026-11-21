@@ -14,9 +14,9 @@ import { CREST_PATH_D } from '../vector_emblems.js';
 
 const GRID_TO_STAGE_TRANSFORM = 'translate(34, -496) scale(1.22)';
 
-function buildStyledStripInstance(parent, mode) {
+function buildStyledStripInstance(parent, mode, offsetX = 0) {
   const pal = getPrintmakingPalette(mode);
-  const g = el('g', { transform: GRID_TO_STAGE_TRANSFORM }, parent);
+  const g = el('g', { transform: `translate(${offsetX}, 0) ${GRID_TO_STAGE_TRANSFORM}` }, parent);
   const hearth = buildHearthAndAnvilGroup(g, pal);
   const leftSmith = buildLeftMasterSmithGroup(g, pal);
   const rightSmith = buildRightStrikerSmithGroup(g, pal);
@@ -30,7 +30,9 @@ function buildStyledStripInstance(parent, mode) {
   };
 }
 
-export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 720) {
+export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 720, stageX0 = 344) {
+  const figureOffsetX = (stageW - 616) / 2;
+  const filmWidth = stageX0 + stageW;
   svgRoot.setAttribute('xmlns', SVG_NS);
   svgRoot.setAttribute('viewBox', `0 0 ${stageW} ${stageH}`);
   svgRoot.innerHTML = '';
@@ -49,13 +51,13 @@ export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 72
   el('rect', { x: -120, y: 0, width: stageW + 240, height: stageH, fill: '#120f0c' }, slideContent);
   const ambientGlow = el(
     'ellipse',
-    { cx: 356, cy: 310, rx: 245, ry: 255, fill: 'url(#gf-hearth-glow)' },
+    { cx: 356 + figureOffsetX, cy: 310, rx: 245, ry: 255, fill: 'url(#gf-hearth-glow)' },
     slideContent
   );
 
   // 2. Strip 0 (`01 铜版金刻` — Left `/` zone): Pure-Vector Tonal Bronze + Fine Copperplate Etch Pattern
   const strip0G = el('g', { 'clip-path': 'url(#gf-clip-0)' }, slideContent);
-  const inst0 = buildStyledStripInstance(strip0G, 'copperplate');
+  const inst0 = buildStyledStripInstance(strip0G, 'copperplate', figureOffsetX);
   el(
     'rect',
     {
@@ -71,11 +73,11 @@ export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 72
 
   // 3. Strip 1 (`02 木刻金版` — Middle `/` zone): Pure-Vector High-Contrast Carved Woodblock Gold Relief
   const strip1G = el('g', { 'clip-path': 'url(#gf-clip-1)' }, slideContent);
-  const inst1 = buildStyledStripInstance(strip1G, 'woodblock');
+  const inst1 = buildStyledStripInstance(strip1G, 'woodblock', figureOffsetX);
 
   // 4. Strip 2 (`03 金网像素` — Right `/` zone): Pure-Vector 4-Tier Square-Dot Gold Halftone Mosaic!
   const strip2G = el('g', { 'clip-path': 'url(#gf-clip-2)' }, slideContent);
-  const inst2 = buildStyledStripInstance(strip2G, 'mosaic');
+  const inst2 = buildStyledStripInstance(strip2G, 'mosaic', figureOffsetX);
 
   // 5. Two Crisp `/` Diagonal Gold Hairline Seams (`(363,0)->(113,720)` & `(478,0)->(251,720)`)
   const seamLine1 = el('line', { stroke: '#e8b35a', 'stroke-width': '2.1', opacity: '0.92' }, slideContent);
@@ -84,14 +86,14 @@ export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 72
   // 5.5. Pure-vector right-side continuation of Cover Double Gold Frame & `羽轮纹章` Corner Emblems
   //      (`stageX0 = 344` => `x_local = x_global - 344`) — 100% pure-vector SVG paths!
   const coverFrameG = el('g', { fill: 'none', stroke: '#c6a363', 'pointer-events': 'none' }, slideContent);
-  el('rect', { x: '-315.92', y: '28.08', width: '903.84', height: '663.84', 'stroke-width': '0.85' }, coverFrameG);
-  el('rect', { x: '-307.28', y: '36.72', width: '886.56', height: '646.56', 'stroke-width': '0.50' }, coverFrameG);
+  el('rect', { x: 28.08 - stageX0, y: '28.08', width: filmWidth - 56.16, height: '663.84', 'stroke-width': '0.85' }, coverFrameG);
+  el('rect', { x: 36.72 - stageX0, y: '36.72', width: filmWidth - 73.44, height: '646.56', 'stroke-width': '0.50' }, coverFrameG);
   const crestScale = (28.8 / 256).toFixed(6);
   for (const cy of [43.92, 647.28]) {
     const cg = el(
       'g',
       {
-        transform: `translate(543.28, ${cy}) scale(${crestScale})`,
+        transform: `translate(${stageW - 72.72}, ${cy}) scale(${crestScale})`,
         opacity: '0.96',
         'pointer-events': 'none',
       },
@@ -167,8 +169,8 @@ export function createGoldPrintmakingForgeSvg(svgRoot, stageW = 616, stageH = 72
       shutterGlowLine.setAttribute('opacity', '0');
     } else {
       const slant = 236;
-      const globalTop = (960 + slant) * (1 - wipeU);
-      const edgeTop = globalTop - 344;
+      const globalTop = (filmWidth + slant) * (1 - wipeU);
+      const edgeTop = globalTop - stageX0;
       const edgeBot = edgeTop - slant;
       if (edgeTop <= -10 && edgeBot <= -10) {
         wipePoly.setAttribute('points', '0,0 0,0 0,0');

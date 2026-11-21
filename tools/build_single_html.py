@@ -200,7 +200,7 @@ export async function loadParameters(manifest, onProgress) {
   <main class="cinema-viewport">
     <div id="cinema-shell" class="cinema-shell">
       <div class="screen-wrap">
-        <canvas id="film" width="1920" height="1440" aria-label="鹈鹕六千年的车"></canvas>
+        <canvas id="film" width="2560" height="1440" aria-label="鹈鹕六千年的车"></canvas>
       </div>
     </div>
   </main>

@@ -1,11 +1,6 @@
 // src/beat/camera.js
-// Native 4:3 (960x720) C2-continuous museum scroll camera for 《鹈鹕骑行·六千年》.
-// Framing geometry in 960x720:
-//   - BASE_PANEL_SCALE = 0.52 -> 520x520px active era frame in x=[220..740], y=[71..591]
-//   - Left neighbor era frame visible in x=[0..220] (220px wide!)
-//   - Right neighbor era frame visible in x=[740..960] (220px wide!)
-//   - Top Demo HUD zone clean in y=[0..66] (zero overlap with painting!)
-//   - Lower gallery wainscoting & Kinetic Punchline stage in y=[592..720] (zero overlap with pelican!)
+// Native 16:9 museum scroll camera. The wider field of view exposes neighboring
+// panels while retaining the original vertical framing and uniform world scale.
 
 import {
   INTRO_SEC,
@@ -18,8 +13,8 @@ import {
   getPelicanWorldState,
 } from './timeline.js';
 
-export const VIEW_W = 960;
-export const VIEW_H = 720;
+import { VIEW_W, VIEW_H } from '../../../core/film-format.js';
+export { VIEW_W, VIEW_H };
 export const BASE_PANEL_SCALE = 0.632;
 export const DEFAULT_CAM_Y = 524;
 

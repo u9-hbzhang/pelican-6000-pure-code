@@ -155,6 +155,8 @@ export function drawLeftEditorialPanel(ctx, kit, panelX, panelW, panelH, doc, re
     ctx.restore();
   }
 
+  // Recenter the original title and seal without stretching their vector paths.
+  ctx.translate((panelW - 344) / 2, 0);
   // 3. Pure-vector Carved Shuowen Xiaozhuan Stone Seal (`「六千年」`) at upper-right shoulder `(300, 136)`
   const sealCx = 300;
   const sealCy = 136;

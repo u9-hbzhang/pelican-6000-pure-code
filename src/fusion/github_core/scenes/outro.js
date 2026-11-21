@@ -1975,7 +1975,7 @@ export function renderOutro(kit, overlayG, t, renderSceneFn) {
   const tile21Cy = GRID_Y0 + tile21Row * (TILE_SIZE + TILE_GAP) + TILE_SIZE / 2;
 
   const startZoom = (BASE_PANEL_SCALE * 1000) / TILE_SIZE; // Exact 520x520px match in 960x720!
-  const galleryZoom = 0.495; // 1710 * 0.495 = 846px wide inside 960px 4:3 frame
+  const galleryZoom = Math.min((VIEW_W - 144) / GRID_W, (VIEW_H - 180) / GRID_H);
   const pullBackU = smootherstep(0.08, 1.85, outroT);
   const curGapX = lerp(0, TILE_GAP, pullBackU);
   const pushInU = smootherstep(3.8, 6.6, outroT);
