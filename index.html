@@ -5,14 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>鹈鹕六千年的车</title>
   <link rel="icon" href="data:,">
+  <!-- Startup CSS is inlined so the loading screen needs no extra request. -->
+  <style id="startup-style">
+.startup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: #050403;
+  color: #fff;
+  opacity: 1;
+  transition: opacity 450ms ease;
+}
+.startup-screen p {
+  margin: 0;
+  padding: 0 20px;
+  font: 400 15px/1.8 ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: .12em;
+  text-align: center;
+  animation: startup-breathe 1.8s ease-in-out infinite alternate;
+}
+.startup-screen.is-ready { opacity: 0; pointer-events: none; }
+.startup-screen.is-error p { animation: none; }
+@keyframes startup-breathe {
+  from { opacity: .3; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-screen { transition: none; }
+  .startup-screen p { animation: none; }
+}
+  </style>
   <link rel="stylesheet" href="./styles/tokens.css">
   <link rel="stylesheet" href="./styles/layout.css">
   <link rel="stylesheet" href="./styles/components/player.css">
-  <script src="./assets/vendor/p5.min.js"></script>
-  <script src="./assets/vendor/p5.brush.js"></script>
+  <script defer src="./assets/vendor/p5.min.js"></script>
+  <script defer src="./assets/vendor/p5.brush.js"></script>
   <script type="module" src="./src/app.js"></script>
 </head>
 <body>
+  <div id="startup-screen" class="startup-screen" role="status" aria-live="polite">
+    <p>正在唤醒六千年的故事…</p>
+  </div>
   <main class="cinema-viewport">
     <div id="cinema-shell" class="cinema-shell">
       <div class="screen-wrap">

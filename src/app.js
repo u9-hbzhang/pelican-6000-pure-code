@@ -2,8 +2,11 @@ import { AssetStore } from './state/assets.js';
 import { AudioClock } from './core/audio.js';
 import { FilmRenderer } from './core/renderer.js';
 import { bindPlayer } from './components/player.js';
+import { finishStartup, failStartup } from './components/startup.js';
 
 async function main() {
+  // Show the static startup screen before CPU-heavy initialization begins.
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const read = (p) =>
     fetch('./data/' + p).then((r) => {
       if (!r.ok) throw new Error(p);
@@ -35,7 +38,7 @@ async function main() {
   const assets = new AssetStore();
   const clock = new AudioClock(audioManifest, features);
   // Pre-decode compact JS audio parameters in background Worker
-  clock.preload().catch((err) => {
+  const audioReady = clock.preload().catch((err) => {
     console.warn('Audio preload deferred until play:', err);
   });
 
@@ -55,14 +58,17 @@ async function main() {
   );
 
   await renderer.init();
+  await audioReady;
   const player = bindPlayer({ renderer, clock, film, features });
 
   window.renderAt = (t) => renderer.renderAt(t);
   window.__film = { renderer, clock, film, features, lyrics, assets, player };
   window.__renderReady = true;
+  finishStartup();
 }
 
 main().catch((e) => {
   console.error(e);
   window.__loadError = String(e);
+  failStartup();
 });

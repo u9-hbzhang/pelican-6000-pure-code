@@ -54,7 +54,11 @@ def collect_topological_modules(root: pathlib.Path, entry_rel: str):
 
 
 def build_single_html(root: pathlib.Path, out_path: pathlib.Path):
+    # Share the first-paint inline style between the website and offline edition.
+    entry_html = (root / "index.html").read_text(encoding="utf-8")
+    startup_css = re.search(r'<style id="startup-style">(.*?)</style>', entry_html, re.S).group(1).strip()
     css_parts = [
+        startup_css,
         (root / "styles/tokens.css").read_text(encoding="utf-8"),
         (root / "styles/layout.css").read_text(encoding="utf-8"),
         (root / "styles/components/player.css").read_text(encoding="utf-8"),
@@ -197,6 +201,9 @@ export async function loadParameters(manifest, onProgress) {
   </style>
 </head>
 <body>
+  <div id="startup-screen" class="startup-screen" role="status" aria-live="polite">
+    <p>正在唤醒六千年的故事…</p>
+  </div>
   <main class="cinema-viewport">
     <div id="cinema-shell" class="cinema-shell">
       <div class="screen-wrap">
@@ -207,6 +214,7 @@ export async function loadParameters(manifest, onProgress) {
   <script id="vfs-payload" type="text/plain">{vfs_b64}</script>
   <script>
 (async function bootSingleHtml() {{
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const b64 = document.getElementById('vfs-payload').textContent.trim();
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -261,6 +269,11 @@ export async function loadParameters(manifest, onProgress) {
 }})().catch((err) => {{
   console.error(err);
   window.__loadError = String(err);
+  const startup = document.getElementById('startup-screen');
+  if (startup) {{
+    startup.classList.add('is-error');
+    startup.querySelector('p').textContent = '启动未完成，请刷新重试';
+  }}
 }});
   </script>
 </body>
