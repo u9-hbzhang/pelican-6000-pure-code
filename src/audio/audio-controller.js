@@ -32,11 +32,22 @@ export class AudioController {
   }
 
   async ensureContext() {
+    // Web Audio defaults to the ambient category on iOS, which obeys Ring/Silent.
+    // This film is intentional media playback, like an <audio> or <video> player.
+    try {
+      if (globalThis.navigator?.audioSession) navigator.audioSession.type = 'playback';
+    } catch {
+      // Older embedded browsers may expose the API without accepting this category.
+      // Keep playback available; the on-screen help explains the Silent switch fallback.
+    }
     if (!this.context) {
-      this.context = new AudioContext({ sampleRate: 48000, latencyHint: 'playback' });
+      const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (!Context) throw new Error('当前浏览器不支持网页音频，请复制链接到 Safari 打开。');
+      this.context = new Context({ sampleRate: 48000, latencyHint: 'playback' });
       this.master = this.context.createGain();
       this.master.gain.value = this.muted ? 0 : this.volume;
       this.master.connect(this.context.destination);
+      if (!this.context.audioWorklet) throw new Error('当前浏览器不支持音频合成，请复制链接到 Safari 打开。');
       this.ready = this.context.audioWorklet.addModule(new URL('./dsp/worklet.js', import.meta.url));
     }
     await this.context.resume();

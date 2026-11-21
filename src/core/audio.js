@@ -27,6 +27,11 @@ export class AudioClock extends EventTarget {
     return this.controller.preload();
   }
 
+  unlockAudio() {
+    // Call directly from a tap/click, before any timer or awaited loading work.
+    return this.controller.ensureContext();
+  }
+
   _onWorkletUpdate(data) {
     if (typeof data?.time !== 'number') return;
     const now = performance.now();
