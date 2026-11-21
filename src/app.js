@@ -3,6 +3,11 @@ import { AudioClock } from './core/audio.js';
 import { FilmRenderer } from './core/renderer.js';
 import { bindPlayer } from './components/player.js';
 import { finishStartup, failStartup } from './components/startup.js';
+import { createDiagnostics } from './core/diagnostics.js';
+
+const diagnostics = createDiagnostics();
+window.__filmDiagnostics = diagnostics;
+diagnostics.mark('app');
 
 async function main() {
   // Show the static startup screen before CPU-heavy initialization begins.
@@ -34,11 +39,13 @@ async function main() {
     'code_payload_story.json',
     'audio/manifest.json',
   ].map(read));
+  diagnostics.mark('dataReady');
 
   const assets = new AssetStore();
   const clock = new AudioClock(audioManifest, features);
   // Pre-decode compact JS audio parameters in background Worker
-  const audioReady = clock.preload().catch((err) => {
+  const audioReady = clock.preload().then(() => diagnostics.mark('audioReady')).catch((err) => {
+    diagnostics.event('audio-preload-failed');
     console.warn('Audio preload deferred until play:', err);
   });
 
@@ -57,18 +64,22 @@ async function main() {
     codePayloadStory
   );
 
+  renderer.diagnostics = diagnostics;
   await renderer.init();
+  diagnostics.mark('rendererReady');
   await audioReady;
   const player = bindPlayer({ renderer, clock, film, features });
 
   window.renderAt = (t) => renderer.renderAt(t);
   window.__film = { renderer, clock, film, features, lyrics, assets, player };
   window.__renderReady = true;
+  diagnostics.mark('ready');
   finishStartup();
 }
 
 main().catch((e) => {
   console.error(e);
   window.__loadError = String(e);
+  diagnostics.event('startup-error: ' + String(e));
   failStartup();
 });

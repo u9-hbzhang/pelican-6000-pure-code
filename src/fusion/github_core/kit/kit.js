@@ -52,26 +52,69 @@ export function flushBrushTarget(brush, p = window?.p5?.instance) {
  * and global `brush` module.
  */
 export function createKit(p, brush) {
-  // Pool of 4 reusable 1000x1000 slots (at most 3 panels visible simultaneously in 1920x1080)
+  // Four panel slots. Current scenes composite into g2d; allocate a GPU target
+  // only if a scene actually requests it, rather than reserving four unused FBOs.
   const slots = [];
   for (let i = 0; i < 4; i++) {
-    const fb = p.createFramebuffer({
-      width: PANEL_SIZE,
-      height: PANEL_SIZE,
-      density: 1,
-      antialias: true,
-    });
+    let fb;
     const g2d = p.createGraphics(PANEL_SIZE, PANEL_SIZE);
     g2d.pixelDensity(1);
-    slots.push({ fb, g2d, inUse: false });
+    slots.push({ get fb() {
+      return fb ??= p.createFramebuffer({ width: PANEL_SIZE, height: PANEL_SIZE, density: 1, antialias: true });
+    }, g2d, inUse: false });
   }
 
   // Static baked 2D canvases (zero WebGL context overhead, instant drawImage/image reuse)
   const static2DCache = new Map();
-  // Static baked WebGL/p5.brush textures (captured once into a p5.Image/p5.Graphics so we don't leak FBOs)
+  // Transient WebGL brush layers, copied to baked 2D artwork before endFrame.
   const staticBrushCache = new Map();
-  // Outro frozen 20-era thumbnails cache (280x280 each)
+  // Outro frozen 20-era thumbnails cache (512x512 each)
   const outroTileCache = new Map();
+  const usedThisFrame = new Set();
+  const cacheBudget = 32 * 1024 * 1024;
+  let canvasBytes = 0;
+
+  function disposeGraphic(g) {
+    const canvas = g.canvas;
+    // p5's main WebGL renderer can retain a texture of a separate Graphics.
+    // This vendored p5 texture map is not cleaned by Graphics.remove().
+    for (const source of [g, canvas]) {
+      const texture = p._renderer?.textures?.get(source);
+      if (texture) {
+        texture.remove();
+        p._renderer.textures.delete(source);
+      }
+    }
+    g.remove();
+    // Removing the DOM node alone does not release its backing store.
+    if (canvas) canvas.width = canvas.height = 0;
+  }
+
+  function beginFrame() {
+    usedThisFrame.clear();
+  }
+
+  function endFrame() {
+    // Brush bakes are copied into 2D artwork by their callers in the same pass.
+    for (const fb of staticBrushCache.values()) fb.remove();
+    staticBrushCache.clear();
+    for (const [key, g] of static2DCache) {
+      if (canvasBytes <= cacheBudget) break;
+      if (usedThisFrame.has(key)) continue;
+      canvasBytes -= g.width * g.height * 4;
+      disposeGraphic(g);
+      static2DCache.delete(key);
+    }
+  }
+
+  function cacheStats() {
+    return { canvasBytes, canvases: static2DCache.size, brushBuffers: staticBrushCache.size };
+  }
+
+  function clearOutroTiles() {
+    for (const g of outroTileCache.values()) disposeGraphic(g);
+    outroTileCache.clear();
+  }
 
   function getSlot(slotIndex) {
     return slots[slotIndex % slots.length];
@@ -81,12 +124,24 @@ export function createKit(p, brush) {
    * Bakes a static 1000x1000 (or custom w x h) 2D canvas texture once by `key`.
    */
   function bake2D(key, drawFn, w = PANEL_SIZE, h = PANEL_SIZE) {
-    if (static2DCache.has(key)) return static2DCache.get(key);
+    usedThisFrame.add(key);
+    if (static2DCache.has(key)) {
+      const cached = static2DCache.get(key);
+      static2DCache.delete(key);
+      static2DCache.set(key, cached);
+      return cached;
+    }
     const g = p.createGraphics(w, h);
     g.pixelDensity(1);
     const rng = makePRNG(hashSeed(key));
-    drawFn(g, g.drawingContext, rng, w, h);
+    try {
+      drawFn(g, g.drawingContext, rng, w, h);
+    } catch (error) {
+      disposeGraphic(g);
+      throw error;
+    }
     static2DCache.set(key, g);
+    canvasBytes += w * h * 4;
     return g;
   }
 
@@ -132,6 +187,9 @@ export function createKit(p, brush) {
         p.pop();
         runBrushLifecycleFlush(p);
       });
+    } catch (error) {
+      fb.remove();
+      throw error;
     } finally {
       if (gl && typeof origEnable === 'function') {
         gl.enable = origEnable;
@@ -168,6 +226,11 @@ export function createKit(p, brush) {
     getSlot,
     bake2D,
     bakeBrush,
+    beginFrame,
+    endFrame,
+    cacheStats,
+    disposeGraphic,
+    clearOutroTiles,
     sampleRoad,
     outroTileCache,
     makePRNG,

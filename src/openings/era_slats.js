@@ -149,9 +149,11 @@ export function ensureIntroEraBackdrops(kit, renderSceneFn, eraDrawers) {
   if (!kit.introEraBgCache) {
     kit.introEraBgCache = new Map();
   }
+  kit.introEraGraphics ??= new Map();
   const tempSlot = kit.getSlot(3);
   for (const d of eraDrawers) {
     if (kit.introEraBgCache.has(d.sceneId)) continue;
+    kit.beginFrame();
     const scene = SCENES.find((s) => s.id === d.sceneId) || SCENES[0];
     const freezeLocalT = d.sceneId === 's02_egypt' ? 2.6 : 3.1;
     const freezeGlobalT = scene.t0 + freezeLocalT;
@@ -177,7 +179,15 @@ export function ensureIntroEraBackdrops(kit, renderSceneFn, eraDrawers) {
     }
     thumb.drawingContext.drawImage(tempSlot.g2d.canvas, 0, 0, 960, 720);
     kit.introEraBgCache.set(d.sceneId, thumb.canvas);
+    kit.introEraGraphics.set(d.sceneId, thumb);
+    kit.endFrame();
   }
+}
+
+export function releaseIntroEraBackdrops(kit) {
+  for (const g of kit.introEraGraphics?.values() || []) kit.disposeGraphic(g);
+  kit.introEraGraphics?.clear();
+  kit.introEraBgCache?.clear();
 }
 
 function drawSvgMarkupOverlay(ctx, x, w, h, realT) {

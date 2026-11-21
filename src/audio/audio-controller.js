@@ -17,6 +17,7 @@ export class AudioController {
   }
 
   preload() {
+    if (this.node) return Promise.resolve(null);
     if (!this.payloadsPromise) {
       this.payloadsPromise = loadParameters(this.manifest, (n, total) => {
         this.onProgress?.(n, total);
@@ -74,6 +75,10 @@ export class AudioController {
         this.onUpdate?.(data);
       };
       this.node.connect(this.master);
+      // AudioWorkletNode cloned the buffers; release the main-thread copy and
+      // the fulfilled promise that otherwise retains another reference to it.
+      this.payloads = null;
+      this.payloadsPromise = null;
       this.node.port.postMessage({ type: 'seek', time: this.time });
     } finally {
       this.onLoading?.(false);

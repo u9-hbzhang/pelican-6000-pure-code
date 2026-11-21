@@ -38,7 +38,7 @@ import { getCodexSceneId } from '../fusion/era_enhancements.js';
 import { renderMuseumGalleryOptics2D } from '../fusion/gallery_lighting.js';
 import { buildForgeTimeline } from '../fusion/forge_kinematics.js';
 import { LiveForgeSvgStage } from '../openings/live_svg_stage.js';
-import { ensureIntroEraBackdrops } from '../openings/era_slats.js';
+import { ensureIntroEraBackdrops, releaseIntroEraBackdrops } from '../openings/era_slats.js';
 import {
   preloadIntroDecorAssets,
   renderAccordionIntroOverlay,
@@ -50,9 +50,10 @@ const _urlScale =
   typeof window !== 'undefined'
     ? Number(new URLSearchParams(window.location.search).get('scale'))
     : 0;
-export const RENDER_SCALE = _urlScale === 3 ? 3 : 2;
-export const FILM_W = VIEW_W * RENDER_SCALE; // 3840 (?scale=3) or 2560 (default)
-export const FILM_H = VIEW_H * RENDER_SCALE; // 2160 (?scale=3) or 1440 (default)
+const mobileScreen = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+export const RENDER_SCALE = [1, 1.5, 2, 3].includes(_urlScale) ? _urlScale : mobileScreen ? 1.5 : 2;
+export const FILM_W = VIEW_W * RENDER_SCALE; // 1920 on touch screens, 2560 on desktop
+export const FILM_H = VIEW_H * RENDER_SCALE;
 
 function getPostCodeExtension(kit) {
   return kit.bake2D(
@@ -266,23 +267,23 @@ export class FilmRenderer {
     if (origSetBg) {
       assets.setBackground = (id, img) => {
         origSetBg(id, img);
-        this.kit?.outroTileCache?.clear();
-        this.kit?.introEraBgCache?.clear();
+        this.kit?.clearOutroTiles();
+        if (this.kit) releaseIntroEraBackdrops(this.kit);
       };
     }
     const origSetChar = assets.setCharacter?.bind(assets);
     if (origSetChar) {
       assets.setCharacter = (img) => {
         origSetChar(img);
-        this.kit?.outroTileCache?.clear();
+        this.kit?.clearOutroTiles();
       };
     }
     const origReset = assets.reset?.bind(assets);
     if (origReset) {
       assets.reset = () => {
         origReset();
-        this.kit?.outroTileCache?.clear();
-        this.kit?.introEraBgCache?.clear();
+        this.kit?.clearOutroTiles();
+        if (this.kit) releaseIntroEraBackdrops(this.kit);
       };
     }
   }
@@ -316,6 +317,9 @@ export class FilmRenderer {
             p.pixelDensity(1);
             const cnv = p.createCanvas(VIEW_W, VIEW_H, p.WEBGL);
             cnv.parent(host);
+            cnv.elt.addEventListener('webglcontextlost', () => {
+              this.diagnostics?.event('webgl-context-lost');
+            });
             p.noLoop();
 
             this.kit = createKit(p, brush);
@@ -338,17 +342,23 @@ export class FilmRenderer {
       preloadIntroDecorAssets(),
     ]);
     this.drawerState.liveSvgMounted = Boolean(this.liveSvgStage.ready);
+    this.diagnostics?.mark('graphicsReady');
 
-    // Pre-bake the 12 Era Accordion backdrops once at startup so the `3.55s` Blacksmith -> Pelican
-    // diagonal shutter transition runs at a locked 60fps with 0.0ms mid-playback stall!
+    // Prepare all 12 accordion backdrops before playback; yield between scenes
+    // so startup does not monopolize the main thread in one long task.
     if (this.accordionDoc?.eraDrawers) {
       const initSync = this.timeWarp.sampleAudioSync(0);
       const renderSceneInit = (kit, slot, scene, params) =>
         renderScenePanel(kit, slot, scene, { ...params, assets: this.assets, sync: initSync });
-      this._executeWebGLPass(() => {
-        ensureIntroEraBackdrops(this.kit, renderSceneInit, this.accordionDoc.eraDrawers);
-      });
+      for (const drawer of this.accordionDoc.eraDrawers) {
+        this._executeWebGLPass(() => {
+          ensureIntroEraBackdrops(this.kit, renderSceneInit, [drawer]);
+        });
+        // Let the startup animation and the browser event loop breathe between bakes.
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
+    this.diagnostics?.mark('backdropsReady');
 
     // Warm up initial frame at t = 0
     this.renderAt(0);
@@ -384,9 +394,13 @@ export class FilmRenderer {
       return { index: idx };
     }
 
+    this.kit.beginFrame();
+    this.diagnostics?.frame(t, this);
     try {
       const sync = this.timeWarp.sampleAudioSync(t);
       const canonicalT = clamp(sync.canonicalT, 0, TOTAL_DURATION);
+      if (canonicalT >= INTRO_SEC) releaseIntroEraBackdrops(this.kit);
+      if (canonicalT < INTRO_SEC + SCENES_TOTAL_SEC) this.kit.clearOutroTiles();
       const beatState = getBeatState(canonicalT);
 
       const frameSeed = ((Math.round(t * 1000) + 1) * 2654435761) >>> 0;
@@ -799,6 +813,8 @@ export class FilmRenderer {
       this.codeSizeHud.draw(t, sync);
     } catch (err) {
       this.errors.push({ scene: 'fusion_renderer', time: t, message: String(err?.stack || err) });
+    } finally {
+      this.kit.endFrame();
     }
 
     return { index: idx };

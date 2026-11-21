@@ -36,6 +36,7 @@ function ensureOutroTiles(kit, renderSceneFn) {
   const tempSlot = kit.getSlot(3);
   for (const scene of SCENES) {
     if (kit.outroTileCache.has(scene.id)) continue;
+    kit.beginFrame();
     const freezeLocalT = 3.0; // Mid-Bar-2 signature pose!
     const freezeGlobalT = scene.t0 + freezeLocalT;
     renderSceneFn(kit, tempSlot, scene, {
@@ -54,6 +55,7 @@ function ensureOutroTiles(kit, renderSceneFn) {
     }
     thumb.drawingContext.drawImage(tempSlot.g2d.canvas, 0, 0, 512, 512);
     kit.outroTileCache.set(scene.id, thumb);
+    kit.endFrame();
   }
 }
 
