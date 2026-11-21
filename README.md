@@ -1,10 +1,12 @@
 # 鹈鹕六千年的车 · Pure-Code Edition
 
-## 本 fork：骑行动作重写 v2 · 16:9 宽屏版
+## 本 fork：v0.1 · 骑行动作重写 · 16:9 宽屏版
 
 观看新版：**https://u9-hbzhang.github.io/pelican-6000-pure-code/**
 
-本版重写了鹈鹕骑行动作，加入明显的前倾发力、抬头舒展及尾羽跟随；保留原作场景、音乐、字幕和时间线。轻点画面开始播放，没有常驻按钮。GitHub Pages 从 `main` 分支根目录发布。
+固定版本：[在线体验 v0.1](https://u9-hbzhang.github.io/pelican-6000-pure-code/v0.1/) · [Release 与单文件下载](https://github.com/u9-hbzhang/pelican-6000-pure-code/releases/tag/v0.1)
+
+本版重写了鹈鹕骑行动作，加入明显的前倾发力、抬头舒展及尾羽跟随；保留原作场景、音乐、字幕和时间线。轻点画面开始播放，没有常驻按钮。GitHub Pages 通过 Actions 发布 `site/release.json` 指定的标签与提交快照；主页自动进入该版本，旧链接和二维码继续有效。开发代码的改动不会自动替换线上影片。
 
 启动时显示黑底白字“正在唤醒六千年的故事…”，文字缓慢明暗呼吸；首帧和音频预解码完成后淡出。启用系统“减少动态效果”时文字保持静态。
 
