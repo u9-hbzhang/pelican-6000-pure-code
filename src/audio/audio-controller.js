@@ -38,7 +38,7 @@ export class AudioController {
       if (globalThis.navigator?.audioSession) navigator.audioSession.type = 'playback';
     } catch {
       // Older embedded browsers may expose the API without accepting this category.
-      // Keep playback available; the on-screen help explains the Silent switch fallback.
+      // Keep playback available; the brief startup hint explains the Silent switch fallback.
     }
     if (!this.context) {
       const Context = globalThis.AudioContext || globalThis.webkitAudioContext;

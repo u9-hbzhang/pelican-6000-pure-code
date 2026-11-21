@@ -43,7 +43,7 @@ def collect_topological_modules(root: pathlib.Path, entry_rel: str):
             spec = m.group(1)
             nxt = (p.parent / spec).resolve()
             if nxt.is_file():
-                nxt_rel = str(nxt.relative_to(root))
+                nxt_rel = nxt.relative_to(root).as_posix()
                 deps.append([spec, nxt_rel])
                 visit(nxt_rel)
         dep_map[rel] = deps
@@ -189,7 +189,7 @@ export async function loadParameters(manifest, onProgress) {
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>鹈鹕六千年的车</title>
   <link rel="icon" href="data:,">
   <style>

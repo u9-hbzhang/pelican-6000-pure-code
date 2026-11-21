@@ -1,89 +1,43 @@
 .cinema-shell {
   --cinema-width: 100vw;
-  --cinema-height: 100vh;
-  --controls-space: 86px;
+  --cinema-height: 100dvh;
   position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--cinema-width);
   height: var(--cinema-height);
-  padding-bottom: var(--controls-space);
   background: #050403;
+  cursor: pointer;
+  touch-action: manipulation;
 }
-.cinema-shell.is-rotated { transform: translate(-50%, -50%) rotate(90deg); }
 .screen-wrap {
   position: relative;
-  width: min(var(--cinema-width), calc((var(--cinema-height) - var(--controls-space)) * 4 / 3));
-  height: min(calc(var(--cinema-height) - var(--controls-space)), calc(var(--cinema-width) * 3 / 4));
+  width: min(var(--cinema-width), calc(var(--cinema-height) * 4 / 3));
+  height: min(var(--cinema-height), calc(var(--cinema-width) * 3 / 4));
   flex: none;
   aspect-ratio: 4 / 3;
   background: #120f0c;
   overflow: hidden;
-  cursor: pointer;
-  touch-action: manipulation;
 }
 .screen-wrap canvas { display: block; width: 100%; height: 100%; }
-.player-controls {
-  position: absolute;
-  z-index: 20;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 10px;
-}
-.player-controls button, .player-help button {
-  min-height: 44px;
-  padding: 9px 13px;
-  border: 1px solid #79613e;
-  border-radius: 9px;
-  background: #211b13;
-  color: #f5ecdc;
-  font: 600 14px system-ui, sans-serif;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.player-controls [data-action="play"] { background: #d8b26e; color: #17120c; }
-.player-controls [aria-pressed="true"] { border-color: #f7dda5; background: #51402a; }
-.player-controls button:disabled { opacity: .65; }
-button:focus-visible, .player-help input:focus-visible { outline: 2px solid #f7dda5; outline-offset: 3px; }
+.cinema-shell.is-idle { cursor: none; }
 .player-notice {
   position: absolute;
   z-index: 30;
-  top: max(8px, env(safe-area-inset-top));
+  bottom: max(20px, env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  width: min(90%, 650px);
-  padding: 12px;
+  width: max-content;
+  max-width: 90%;
+  margin: 0;
+  padding: 8px 14px;
   border-radius: 8px;
-  background: #211b13;
+  background: #17130fd9;
+  color: #f5ecdc;
+  text-align: center;
   font: 14px/1.5 system-ui, sans-serif;
+  pointer-events: none;
 }
-.player-help {
-  position: absolute;
-  z-index: 25;
-  bottom: 70px;
-  width: min(92%, 520px);
-  max-height: calc(var(--cinema-height) - 100px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: 20px;
-  border: 1px solid #79613e;
-  border-radius: 12px;
-  background: #17130f;
-  font: 14px/1.6 system-ui, sans-serif;
-}
-.player-help strong { font-size: 18px; }
-.player-help input { width: 100%; margin: 0 0 12px; padding: 8px; font-size: 16px; user-select: text; }
 [hidden] { display: none !important; }
-@media (max-width: 360px) {
-  .player-controls { gap: 4px; padding: 0 6px; }
-  .player-controls button { padding: 8px 10px; font-size: 13px; }
-}
